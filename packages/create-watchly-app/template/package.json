@@ -1,15 +1,13 @@
 {
-  "name": "watchly-devkit",
+  "name": "watchly-app",
   "version": "0.1.0",
-  "private": true,
   "scripts": {
     "dev": "node scripts/start-dev.mjs",
     "build": "next build",
     "prebuild": "npm run generate:dev-kiosk-routes",
     "start": "next start",
     "lint": "eslint",
-    "generate:dev-kiosk-routes": "node scripts/generate-dev-kiosk-routes.mjs",
-    "sync:create-template": "node scripts/sync-create-watchly-template.mjs"
+    "generate:dev-kiosk-routes": "node scripts/generate-dev-kiosk-routes.mjs"
   },
   "dependencies": {
     "next": "16.2.3",

@@ -1,0 +1,27 @@
+{
+    "name": "create-watchly-app",
+    "version": "0.1.0",
+    "description": "Bootstrap a Watchly Devkit app with Next.js",
+    "type": "module",
+    "bin": {
+        "create-watchly-app": "./index.mjs"
+    },
+    "files": [
+        "index.mjs",
+        "template"
+    ],
+    "engines": {
+        "node": ">=18"
+    },
+    "keywords": [
+        "watchly",
+        "nextjs",
+        "create-app",
+        "iframe",
+        "postmessage"
+    ],
+    "license": "MIT",
+    "scripts": {
+        "prepublishOnly": "node ../../scripts/sync-create-watchly-template.mjs"
+    }
+}

@@ -1,10 +1,8 @@
 # Watchly Devkit (`watchly-devkit`)
 
-A starter app, built with Next.js (App Router), that's intended to build dynamic content for Watchly kiosk displays.
-Watchly apps are loaded in an iframe that's hosted on the kiosk device itself and receive data from the host device
-via **`postMessage()`** updates; this app validates them with **Zod**, then exposes **`WatchlyContext`** to all routes via **`WatchlyProvider`**.
+Self-contained Next.js (App Router) app intended to run **inside an iframe**. A parent page sends **`postMessage`** updates; this app validates them with **Zod**, then exposes **`WatchlyContext`** to all routes via **`WatchlyProvider`**.
 
-## Start a New project with `create-watchly-app`
+## New project
 
 Bootstrap the same app in a new directory (includes everything in this template):
 
@@ -15,9 +13,11 @@ npx create-watchly-app@latest
 
 The CLI copies `.env.example` to `.env.local` for you (edit if parent origins differ).
 
-## Contributors
+Publishing: from `packages/create-watchly-app`, run `npm publish` (or your registry workflow). `prepublishOnly` refreshes `template/` from this repo so the published tarball always matches the app sources.
 
-### Setup (this repo)
+Maintainers: after changing app files, run `npm run sync:create-template` so the committed template stays in sync before you ship a new CLI version.
+
+## Setup (this repo)
 
 ```bash
 npm install
@@ -26,14 +26,7 @@ cp .env.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) (or the port shown in the terminal).
-
-### Publishing
-
-From `packages/create-watchly-app`, run `npm publish` (or your registry workflow).
-The `prepublishOnly` script refreshes `template/` from this repo so the published tarball always matches the app sources.
-
-Maintainers: after changing app files, run `npm run sync:create-template` so the committed template stays in sync before you ship a new CLI version.
+Open [http://localhost:3000](http://localhost:3000) (or the port shown in the terminal). Use **`/example`** to inspect the current context.
 
 ## DevKiosk (development only)
 
@@ -56,31 +49,35 @@ Maintainers: after changing app files, run `npm run sync:create-template` so the
 Host page loads this app in an iframe whose `src` is the deployed Watchly Devkit URL (HTTPS in production).
 
 ```html
-<iframe id="watchly" src="https://your-watchly-host.example/path" title="Watchly Devkit"></iframe>
+<iframe
+  id="watchly"
+  src="https://your-watchly-host.example/path"
+  title="Watchly Devkit"
+></iframe>
 ```
 
 From the parent (same document that owns the iframe):
 
 ```js
-const iframe = document.getElementById('watchly');
-const childOrigin = 'https://your-watchly-host.example'; // must match iframe src origin
+const iframe = document.getElementById("watchly");
+const childOrigin = "https://your-watchly-host.example"; // must match iframe src origin
 
 iframe.contentWindow.postMessage(
-    {
-        type: 'watchly:context',
-        payload: {
-            frame: {
-                frameSequence: 1,
-                isSport: true,
-                nonSportFrameCount: 0,
-                imageRoute: '/assets/frame.png',
-                isCommercial: false,
-                currentSport: 'Basketball',
-                currentEventParticipants: ['Team A', 'Team B'],
-            },
-        },
+  {
+    type: "watchly:context",
+    payload: {
+      frame: {
+        frameSequence: 1,
+        isSport: true,
+        nonSportFrameCount: 0,
+        imageRoute: "/assets/frame.png",
+        isCommercial: false,
+        currentSport: "Basketball",
+        currentEventParticipants: ["Team A", "Team B"],
+      },
     },
-    childOrigin,
+  },
+  childOrigin,
 );
 ```
 
@@ -89,24 +86,24 @@ iframe.contentWindow.postMessage(
 
 ## Message shape
 
-| Field     | Type                | Description        |
-| --------- | ------------------- | ------------------ |
-| `type`    | `"watchly:context"` | Discriminator      |
-| `payload` | `WatchlyContext`    | Validated with Zod |
+| Field | Type | Description |
+| --- | --- | --- |
+| `type` | `"watchly:context"` | Discriminator |
+| `payload` | `WatchlyContext` | Validated with Zod |
 
 `WatchlyContext`:
 
 ```ts
 type WatchlyContext = {
-    frame: {
-        frameSequence: number;
-        isSport: boolean;
-        nonSportFrameCount: number;
-        imageRoute: string;
-        isCommercial: boolean;
-        currentSport: string | null;
-        currentEventParticipants: string[] | null;
-    };
+  frame: {
+    frameSequence: number;
+    isSport: boolean;
+    nonSportFrameCount: number;
+    imageRoute: string;
+    isCommercial: boolean;
+    currentSport: string | null;
+    currentEventParticipants: string[] | null;
+  };
 };
 ```
 
