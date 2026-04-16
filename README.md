@@ -17,6 +17,8 @@ The CLI copies `.env.example` to `.env.local` for you (edit if parent origins di
 
 ## Contributors
 
+<img src="docs/dev-kiosk.png" />
+
 ### Setup (this repo)
 
 ```bash
