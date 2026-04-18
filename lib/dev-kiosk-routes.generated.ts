@@ -3,6 +3,7 @@
 export const DEV_KIOSK_APP_ROUTES = [
   "/",
   "/dev-datafetching",
+  "/dev-three-panel",
   "/message-debug",
   "/solid-bg-test",
 ] as const;
