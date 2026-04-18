@@ -157,7 +157,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                     <div className="flex min-h-0 flex-1 flex-col overflow-auto bg-gray-300">
                         <div className="flex min-h-full flex-1 items-center justify-center p-4">
                             <div
-                                className="relative box-border shrink-0 rounded-md border-[10px] border-zinc-950 bg-zinc-950 shadow-[0_24px_64px_rgba(0,0,0,0.38)] dark:border-black dark:bg-black dark:shadow-[0_24px_64px_rgba(0,0,0,0.55)]"
+                                className="relative box-border shrink-0 overflow-hidden rounded-md border-[10px] border-zinc-950 bg-zinc-950 shadow-[0_24px_64px_rgba(0,0,0,0.38)] dark:border-black dark:bg-black dark:shadow-[0_24px_64px_rgba(0,0,0,0.55)]"
                                 style={{
                                     aspectRatio: '9 / 16',
                                     width: 'min(100%, calc((100dvh - 7.5rem) * 9 / 16), calc(100vw * 0.92))',
@@ -166,7 +166,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                 <iframe
                                     ref={iframeRef}
                                     title="Watchly Devkit embed"
-                                    className="absolute inset-0 block size-full border-0 bg-white"
+                                    className="absolute inset-0 block size-full border-0 bg-zinc-950 dark:bg-black"
                                     src={iframePath}
                                     onLoad={() => setIframeReady(true)}
                                 />

@@ -20,7 +20,7 @@ function parseParticipants(text: string): string[] | null {
     if (!t) return null;
     return t
         .split(',')
-        .map(s => s.trim())
+        .map((s) => s.trim())
         .filter(Boolean);
 }
 
@@ -68,7 +68,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
         };
 
         win.postMessage(message, targetOrigin);
-        setNextFrameSequence(n => n + 1);
+        setNextFrameSequence((n) => n + 1);
     }, [nextFrameSequence, isSport, nonSportFrameCount, imageRoute, isCommercial, currentSport, participantsText]);
 
     const applyManualPath = useCallback(() => {
@@ -100,7 +100,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                 >
                     <button
                         type="button"
-                        onClick={() => setLeftCollapsed(c => !c)}
+                        onClick={() => setLeftCollapsed((c) => !c)}
                         className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-2 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
                         aria-expanded={!leftCollapsed}
                     >
@@ -110,7 +110,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                     {!leftCollapsed && (
                         <nav className="min-h-0 flex-1 overflow-y-auto p-2">
                             <ul className="space-y-1">
-                                {routes.map(route => (
+                                {routes.map((route) => (
                                     <li key={route}>
                                         <button
                                             type="button"
@@ -141,7 +141,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                             <span className="shrink-0 text-zinc-500">Manual path</span>
                             <input
                                 value={manualPath}
-                                onChange={e => setManualPath(e.target.value)}
+                                onChange={(e) => setManualPath(e.target.value)}
                                 className="min-w-0 flex-1 rounded border border-zinc-300 bg-white px-2 py-1 font-mono text-xs dark:border-zinc-700 dark:bg-zinc-950"
                                 placeholder="/example"
                             />
@@ -157,7 +157,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                     <div className="flex min-h-0 flex-1 flex-col overflow-auto bg-gray-300">
                         <div className="flex min-h-full flex-1 items-center justify-center p-4">
                             <div
-                                className="relative box-border shrink-0 rounded-md border-[10px] border-zinc-950 bg-zinc-950 shadow-[0_24px_64px_rgba(0,0,0,0.38)] dark:border-black dark:bg-black dark:shadow-[0_24px_64px_rgba(0,0,0,0.55)]"
+                                className="relative box-border shrink-0 overflow-hidden rounded-md border-[10px] border-zinc-950 bg-zinc-950 shadow-[0_24px_64px_rgba(0,0,0,0.38)] dark:border-black dark:bg-black dark:shadow-[0_24px_64px_rgba(0,0,0,0.55)]"
                                 style={{
                                     aspectRatio: '9 / 16',
                                     width: 'min(100%, calc((100dvh - 7.5rem) * 9 / 16), calc(100vw * 0.92))',
@@ -166,7 +166,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                 <iframe
                                     ref={iframeRef}
                                     title="Watchly Devkit embed"
-                                    className="absolute inset-0 block size-full border-0 bg-white"
+                                    className="absolute inset-0 block size-full border-0 bg-zinc-950 dark:bg-black"
                                     src={iframePath}
                                     onLoad={() => setIframeReady(true)}
                                 />
@@ -183,7 +183,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                 >
                     <button
                         type="button"
-                        onClick={() => setRightCollapsed(c => !c)}
+                        onClick={() => setRightCollapsed((c) => !c)}
                         className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-2 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
                         aria-expanded={!rightCollapsed}
                     >
@@ -202,7 +202,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     <input
                                         type="checkbox"
                                         checked={isSport}
-                                        onChange={e => setIsSport(e.target.checked)}
+                                        onChange={(e) => setIsSport(e.target.checked)}
                                     />
                                     isSport
                                 </label>
@@ -211,7 +211,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     <input
                                         type="number"
                                         value={nonSportFrameCount}
-                                        onChange={e => setNonSportFrameCount(Number(e.target.value) || 0)}
+                                        onChange={(e) => setNonSportFrameCount(Number(e.target.value) || 0)}
                                         className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
                                     />
                                 </label>
@@ -219,7 +219,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     <span className="text-zinc-500">imageRoute</span>
                                     <input
                                         value={imageRoute}
-                                        onChange={e => setImageRoute(e.target.value)}
+                                        onChange={(e) => setImageRoute(e.target.value)}
                                         className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
                                     />
                                 </label>
@@ -227,7 +227,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     <input
                                         type="checkbox"
                                         checked={isCommercial}
-                                        onChange={e => setIsCommercial(e.target.checked)}
+                                        onChange={(e) => setIsCommercial(e.target.checked)}
                                     />
                                     isCommercial
                                 </label>
@@ -235,7 +235,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     <span className="text-zinc-500">currentSport (empty → null)</span>
                                     <input
                                         value={currentSport}
-                                        onChange={e => setCurrentSport(e.target.value)}
+                                        onChange={(e) => setCurrentSport(e.target.value)}
                                         className="rounded border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-950"
                                     />
                                 </label>
@@ -245,7 +245,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     </span>
                                     <textarea
                                         value={participantsText}
-                                        onChange={e => setParticipantsText(e.target.value)}
+                                        onChange={(e) => setParticipantsText(e.target.value)}
                                         rows={3}
                                         className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
                                     />
