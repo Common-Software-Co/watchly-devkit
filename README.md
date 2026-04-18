@@ -1,3 +1,5 @@
+![Watchly Logo](./docs/watchly-logo.png 'Watchly DevKit')
+
 # Watchly Devkit (`watchly-devkit`)
 
 A starter app, built with Next.js (App Router), that's intended to build dynamic content for Watchly kiosk displays.
@@ -7,21 +9,9 @@ The app that you build with this devkit is intended to be the iframe content and
 
 ## Start a New project with `create-watchly-app`
 
-Bootstrap a new app in a new directory:
-
 ```bash
 npx create-next-app --example https://github.com/Common-Software-Co/watchly-devkit
-```
-
-Copy `.env.example` to `.env.local`
-
-```bash
 cp .env.example .env.local
-```
-
-Run the local server in dev mode
-
-```bash
 npm run dev
 ```
 
@@ -29,9 +19,9 @@ Open [http://localhost:3000](http://localhost:3000) (or the port shown in the te
 
 ## DevKiosk (development only)
 
-<img src="docs/dev-kiosk.png" />
+**The `/dev-kiosk` route** simulates the **parent** kiosk window that will be loading your app in production and let's you simulate context messages that deliver data to your app about what's on the adjacent TV so that your app can react to it.
 
-**`/dev-kiosk`** simulates the **parent** kiosk window that will be loading your app in production.
+<img src="docs/dev-kiosk.png" />
 
 - The collapsible **right** sidebar allows you to send `watchly:context` messages from the **parent** kiosk page to your app (that's loaded in the iframe).
   These are the messages that tell your app what's on the main TV so that your app can react to it.
@@ -85,21 +75,12 @@ The messages are received by the `watchly-devkit` framework message listener and
 
 ## Building new content
 
-1. Create a new route
-
-- Create a new child folder within `/app`. The folder name will become the url route
-- Create a file within your new folder named `page.tsx`. This is a React component definition that must `export default`.
+1. Create a new child folder within `/app`. The folder name will become the url route
+2. Create a file within your new folder named `page.tsx`. This is a React component definition that must `export default`.
 
 Look at the [datafetching example](./app/dev-datafetching/page.tsx) for a minimal working component that receives Watchly context messages.
 
 ## Message shape
-
-| Field     | Type                | Description        |
-| --------- | ------------------- | ------------------ |
-| `type`    | `"watchly:context"` | Discriminator      |
-| `payload` | `WatchlyContext`    | Validated with Zod |
-
-`WatchlyContext`:
 
 ```ts
 type WatchlyContext = {
