@@ -9,12 +9,13 @@ Watchly apps are loaded in an iframe that's hosted on the kiosk device itself an
 via messages (**`window.postMessage()`**) from the parent page to the iframe;
 The app that you build with this devkit is intended to be the iframe content and it will be able to access all of the kiosk's image inference data through the **`WatchlyContext`**.
 
-## Start a New project with `create-watchly-app`
+## Start a new project
+
+With the [`create-watchly-app`](https://www.npmjs.com/package/create-watchly-app) helper (runs `create-next-app` against this repo and seeds `.env.local`):
 
 ```bash
-npx create-next-app --example https://github.com/Common-Software-Co/watchly-devkit
-cp .env.example .env.local
-npm run dev
+npx create-watchly-app@latest my-project
+cd my-project && npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) (or the port shown in the terminal).
@@ -52,10 +53,14 @@ iframe.contentWindow.postMessage(
                 frameSequence: 3920,
                 isSport: true,
                 nonSportFrameCount: 0,
-                imageRoute: '/assets/frame.png',
+                imageRoute: 'basketball',
                 isCommercial: false,
                 currentSport: 'Basketball',
                 currentEventParticipants: ['Team A', 'Team B'],
+            },
+            device: {
+                deviceId: 'device-123',
+                locationName: 'Example Venue',
             },
         },
     },
@@ -82,21 +87,49 @@ The messages are received by the `watchly-devkit` framework message listener and
 
 Look at the [datafetching example](./app/dev-datafetching/page.tsx) for a minimal working component that receives Watchly context messages.
 
-## Message shape
+## `WatchlyContext` (message payload)
+
+The host sends `{ type: 'watchly:context', payload: WatchlyContext }`. The payload is validated in [`lib/watchly-schema.ts`](./lib/watchly-schema.ts) (Zod); the following mirrors that schema.
 
 ```ts
+type WatchlyImageRoute =
+    | 'football'
+    | 'basketball'
+    | 'commercial'
+    | 'sportscast'
+    | 'talkshow'
+    | 'episode'
+    | 'baseball'
+    | 'tennis'
+    | 'hockey'
+    | 'golf'
+    | 'boxing'
+    | 'unknown';
+
 type WatchlyContext = {
     frame: {
+        /** Monotonic frame counter from the device (starts at 1 when powered on). */
         frameSequence: number;
+        /** Whether the TV content is classified as sport. */
         isSport: boolean;
+        /** Frames since sport was last detected. */
         nonSportFrameCount: number;
-        imageRoute: string;
+        /** Coarse visual category for the current frame. */
+        imageRoute: WatchlyImageRoute;
         isCommercial: boolean;
+        /** Sport name when applicable; `null` when not sport or unknown. */
         currentSport: string | null;
+        /** Participant names (e.g. teams) when identified; otherwise `null`. */
         currentEventParticipants: string[] | null;
+    };
+    device: {
+        deviceId: string | null;
+        locationName: string | null;
     };
 };
 ```
+
+**Semantics:** Prefer `frame.imageRoute` for “what kind of frame is this?”. During ads, `isCommercial` is true and `imageRoute` may be `'commercial'` while `currentSport` can still reflect the sport you are likely to return to—decide in your UI whether to hide, dim, or hold the last spotlight.
 
 Invalid messages are ignored; in development, a warning is logged.
 
@@ -122,7 +155,6 @@ Open [http://localhost:3000](http://localhost:3000) (or the port shown in the te
 
 ### Publishing
 
-From `packages/create-watchly-app`, run `npm publish`.
-The `prepublishOnly` script refreshes `template/` from this repo so the published tarball always matches the app sources.
+From `packages/create-watchly-app`, run `npm publish` (see that package’s README for what the published tarball contains).
 
 Maintainers: after changing app files, run `npm run sync:create-template` so the committed template stays in sync before you ship a new CLI version.
