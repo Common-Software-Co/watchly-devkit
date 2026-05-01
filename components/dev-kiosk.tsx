@@ -3,8 +3,13 @@
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useState } from 'react';
+import { DevKioskSchemaReference } from '@/components/dev-kiosk-schema-reference';
 import type { DevKioskAppRoute } from '@/lib/dev-kiosk-routes.generated';
-import type { WatchlyContext } from '@/lib/watchly-schema';
+import { defaultWatchlyContext, watchlyFrameSchema, type WatchlyContext } from '@/lib/watchly-schema';
+
+type FrameImageRoute = WatchlyContext['frame']['imageRoute'];
+
+const DEV_KIOSK_IMAGE_ROUTES = watchlyFrameSchema.shape.imageRoute.options;
 
 /** Query marker: Dev Kiosk adds this to iframe URLs so nested /dev-kiosk can detect the embed preview. */
 export const DEV_KIOSK_IFRAME_QUERY_KEY = 'i';
@@ -90,7 +95,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
 
     const [isSport, setIsSport] = useState(false);
     const [nonSportFrameCount, setNonSportFrameCount] = useState(0);
-    const [imageRoute, setImageRoute] = useState('');
+    const [imageRoute, setImageRoute] = useState<FrameImageRoute>('unknown');
     const [isCommercial, setIsCommercial] = useState(false);
     const [currentSport, setCurrentSport] = useState('');
     const [participantsText, setParticipantsText] = useState('');
@@ -114,6 +119,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                 currentSport: currentSport.trim() === '' ? null : currentSport.trim(),
                 currentEventParticipants: parseParticipants(participantsText),
             },
+            device: defaultWatchlyContext.device,
         };
 
         const message = {
@@ -146,7 +152,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                     <code className="font-mono" suppressHydrationWarning title="Origin is only known in the browser">
                         {typeof window !== 'undefined' ? window.location.origin : '…'}
                     </code>
-                    .
+                    as the origin.
                 </p>
             </header>
 
@@ -234,10 +240,10 @@ export function DevKiosk({ routes }: DevKioskProps) {
                     </div>
                 </div>
 
-                {/* Right: payload */}
+                {/* Right: schema reference + simulator */}
                 <aside
                     className={`flex shrink-0 flex-col border-l border-zinc-200 bg-white transition-[width] duration-200 ease-out dark:border-zinc-800 dark:bg-zinc-900 ${
-                        rightCollapsed ? 'w-10' : 'w-80'
+                        rightCollapsed ? 'w-10' : 'min-w-[18rem] w-[26rem]'
                     }`}
                 >
                     <button
@@ -246,79 +252,97 @@ export function DevKiosk({ routes }: DevKioskProps) {
                         className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-2 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
                         aria-expanded={!rightCollapsed}
                     >
-                        <span className={rightCollapsed ? 'sr-only' : ''}>Payload</span>
+                        <span className={rightCollapsed ? 'sr-only' : ''}>Message simulator</span>
                         <span aria-hidden>{rightCollapsed ? '«' : '»'}</span>
                     </button>
                     {!rightCollapsed && (
-                        <div className="min-h-0 flex-1 overflow-y-auto p-3">
-                            <p className="mb-3 font-mono text-xs text-zinc-500">
-                                Next <code className="text-zinc-800 dark:text-zinc-200">frameSequence</code>:{' '}
-                                <strong className="text-zinc-900 dark:text-zinc-100">{nextFrameSequence}</strong>
-                            </p>
+                        <div className="min-h-0 flex-1 overflow-y-auto">
+                            <div className="p-3 pt-4">
+                                <p className="mb-3 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                                    Simulator payload
+                                </p>
+                                <p className="mb-3 font-mono text-xs text-zinc-500">
+                                    Next <code className="text-zinc-800 dark:text-zinc-200">frameSequence</code>:{' '}
+                                    <strong className="text-zinc-900 dark:text-zinc-100">{nextFrameSequence}</strong>
+                                </p>
 
-                            <div className="space-y-3 text-xs">
-                                <label className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={isSport}
-                                        onChange={(e) => setIsSport(e.target.checked)}
-                                    />
-                                    isSport
-                                </label>
-                                <label className="flex flex-col gap-1">
-                                    <span className="text-zinc-500">nonSportFrameCount</span>
-                                    <input
-                                        type="number"
-                                        value={nonSportFrameCount}
-                                        onChange={(e) => setNonSportFrameCount(Number(e.target.value) || 0)}
-                                        className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
-                                    />
-                                </label>
-                                <label className="flex flex-col gap-1">
-                                    <span className="text-zinc-500">imageRoute</span>
-                                    <input
-                                        value={imageRoute}
-                                        onChange={(e) => setImageRoute(e.target.value)}
-                                        className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
-                                    />
-                                </label>
-                                <label className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={isCommercial}
-                                        onChange={(e) => setIsCommercial(e.target.checked)}
-                                    />
-                                    isCommercial
-                                </label>
-                                <label className="flex flex-col gap-1">
-                                    <span className="text-zinc-500">currentSport (empty → null)</span>
-                                    <input
-                                        value={currentSport}
-                                        onChange={(e) => setCurrentSport(e.target.value)}
-                                        className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
-                                    />
-                                </label>
-                                <label className="flex flex-col gap-1">
-                                    <span className="text-zinc-500">
-                                        currentEventParticipants (comma-separated, empty → null)
-                                    </span>
-                                    <textarea
-                                        value={participantsText}
-                                        onChange={(e) => setParticipantsText(e.target.value)}
-                                        rows={3}
-                                        className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
-                                    />
-                                </label>
+                                <div className="space-y-3 text-xs">
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={isSport}
+                                            onChange={(e) => setIsSport(e.target.checked)}
+                                        />
+                                        isSport
+                                    </label>
+                                    <label className="flex flex-col gap-1">
+                                        <span className="text-zinc-500">nonSportFrameCount</span>
+                                        <input
+                                            type="number"
+                                            value={nonSportFrameCount}
+                                            onChange={(e) => setNonSportFrameCount(Number(e.target.value) || 0)}
+                                            className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
+                                        />
+                                    </label>
+                                    <label className="flex flex-col gap-1">
+                                        <span className="text-zinc-500">imageRoute</span>
+                                        <select
+                                            value={imageRoute}
+                                            onChange={(e) => setImageRoute(e.target.value as FrameImageRoute)}
+                                            className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
+                                        >
+                                            {DEV_KIOSK_IMAGE_ROUTES.map((route) => (
+                                                <option key={route} value={route}>
+                                                    {route}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </label>
+                                    <label className="flex items-center gap-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={isCommercial}
+                                            onChange={(e) => setIsCommercial(e.target.checked)}
+                                        />
+                                        isCommercial
+                                    </label>
+                                    <label className="flex flex-col gap-1">
+                                        <span className="text-zinc-500">currentSport (empty → null)</span>
+                                        <input
+                                            value={currentSport}
+                                            onChange={(e) => setCurrentSport(e.target.value)}
+                                            className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
+                                        />
+                                    </label>
+                                    <label className="flex flex-col gap-1">
+                                        <span className="text-zinc-500">
+                                            currentEventParticipants (comma-separated, empty → null)
+                                        </span>
+                                        <textarea
+                                            value={participantsText}
+                                            onChange={(e) => setParticipantsText(e.target.value)}
+                                            rows={3}
+                                            className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
+                                        />
+                                    </label>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    disabled={!iframeReady}
+                                    onClick={sendToIframe}
+                                    className="mt-4 w-full rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    Send to iframe
+                                </button>
                             </div>
-
-                            <button
-                                type="button"
-                                disabled={!iframeReady}
-                                onClick={sendToIframe}
-                                className="mt-4 w-full rounded-md bg-emerald-600 px-3 py-2 text-sm font-medium text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                Send to iframe
-                            </button>
+                            <div
+                                role="presentation"
+                                className="mx-3 h-px bg-gradient-to-r from-transparent via-zinc-200 to-transparent dark:via-zinc-700"
+                            />
+                            <div className="p-3 pb-1">
+                                <DevKioskSchemaReference />
+                            </div>
                         </div>
                     )}
                 </aside>
