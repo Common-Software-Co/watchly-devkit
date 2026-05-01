@@ -2,7 +2,9 @@
 
 # Watchly Devkit (`watchly-devkit`)
 
-A starter app, built with Next.js (App Router), that's intended to build dynamic content for Watchly kiosk displays.
+Build your own content-aware, screen-side app for the Watchly.ai platform in 10 minutes with the devkit.<br />
+Learn more about the Watchly hardware at https://watchly.ai
+
 Watchly apps are loaded in an iframe that's hosted on the kiosk device itself and receive data from the host device
 via messages (**`window.postMessage()`**) from the parent page to the iframe;
 The app that you build with this devkit is intended to be the iframe content and it will be able to access all of the kiosk's image inference data through the **`WatchlyContext`**.
