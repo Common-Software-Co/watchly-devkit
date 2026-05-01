@@ -1,51 +1,76 @@
 # Watchly Devkit — agent / contributor notes
 
+## TL;DR
+
+- **Watchly Devkit** is a Next.js **App Router** app meant to run **inside a parent `<iframe>`** on a Watchly device.
+- Live TV context arrives via **`postMessage`**, not by rewriting `iframe.src`. Envelope: **`{ type: "watchly:context", payload: WatchlyContext }`** (Zod-validated).
+- UI reads **`useWatchlyContext()`** from **`WatchlyProvider`** ([`lib/watchly-provider.tsx`](lib/watchly-provider.tsx)); schema lives in [`lib/watchly-schema.ts`](lib/watchly-schema.ts).
+- **Security:** allowlist **`event.origin`** with **`NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS`**; when embedded, require **`event.source === window.parent`**. Gate parsing on **`event.data?.type === "watchly:context"`** before Zod.
+- **Dev:** **`/dev-kiosk`** simulates the parent (development only). Adding **`app/<segment>/page.tsx`** requires regenerating [`lib/dev-kiosk-routes.generated.ts`](lib/dev-kiosk-routes.generated.ts) via **`npm run generate:dev-kiosk-routes`** (also **`predev`** / **`prebuild`**).
+- **Monorepo:** the canonical app is repo root; **`packages/create-watchly-app/template/`** is the scaffold — sync with **`node scripts/sync-create-watchly-template.mjs`** from repo root after substantive changes.
+
 ## What this project is
 
-**Watchly Devkit** (`watchly-devkit/`) is a **standalone** Next.js (App Router) app meant to run **inside an `<iframe>`** on a Watchly device. It includes an opinionated messaging layer to receive messages from the the Watchly host page and updates a React context object with details about what's on the main TV (the one that Watchly is monitoring).
+**Watchly Devkit** (`watchly-devkit/`) is a **standalone** Next.js (App Router) app that runs **inside an `<iframe>`** on a Watchly device. It receives messages from the Watchly host page and exposes a React context describing what’s on the monitored TV.
 
 ## How it is loaded and how it gets “host” state
 
-### Embedding model
+The **parent** (host) sets the iframe **`src`** to this app’s URL. The iframe document is **this Next.js app**; parent and child are often **cross-origin** in production.
 
-1. A **parent page** (the “host”, e.g. a thin React app wrapper on a Watchly kiosk device) loads this app by setting the iframe’s **`src`** to this app's URL.
-2. The iframe document is **this Next.js app**. It is typically **cross-origin** from the parent in production.
-3. **Live data updates** from parent to iframe use **`window.postMessage`**, not repeatedly changing or refreshing `iframe.src`. Rewriting the iframe URL for every update forces full navigations and is the wrong model for high-frequency context.
+**Updates:** the parent calls **`iframe.contentWindow.postMessage(message, targetOrigin)`**. **`targetOrigin`** must be this app’s **serialized origin** (e.g. `https://watchly.example.com`), matching the iframe URL — not `*` in production. Do **not** drive high-frequency context by repeatedly changing **`iframe.src`** (full navigations); use **`postMessage`**.
 
-### Message flow (parent → iframe)
+The child listens on **`window`** for **`message`** events. Only messages that pass **origin allowlisting** and **schema validation** update UI state.
 
-- The parent obtains a reference to the iframe’s window (e.g. `iframe.contentWindow`) and calls:
-    - `contentWindow.postMessage(message, targetOrigin)`
-- **`targetOrigin`** must be this app’s **serialized origin** (e.g. `https://watchly.example.com`), matching the iframe `src` origin—not `*` in production.
-- The child (**this app**) listens on `window` for `message` events. Only messages that pass **origin allowlisting** and **schema validation** update UI state.
+## Envelope and payload
 
-### Envelope and payload
-
-- Expected shape: `{ type: "watchly:context", payload: WatchlyContext }`.
+- Expected shape: **`{ type: "watchly:context", payload: WatchlyContext }`**.
 - **`WatchlyContext`** is defined in [`lib/watchly-schema.ts`](lib/watchly-schema.ts) and validated with **Zod** (`watchlyContextMessageSchema` in [`lib/watchly-post-message.ts`](lib/watchly-post-message.ts)).
 - The React tree reads the latest validated payload from **`WatchlyProvider`** / **`useWatchlyContext()`** ([`lib/watchly-provider.tsx`](lib/watchly-provider.tsx)).
 
-### Security (non-negotiable)
+## `WatchlyContext.frame` semantics (for UI logic)
 
-- **`NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS`**: comma-separated list of **parent** origins that may send messages. If unset or empty, parsing defaults to **`http://ui`** (production kiosk parent hostname). Compare **`event.origin`** to this allowlist exactly (serialized origins have **no** path; use `http://ui`, not `http://ui/`).
+- **`imageRoute`** is the coarse visual classification (e.g. **`football`**, **`baseball`**, **`commercial`**, **`unknown`**). Prefer it when the question is “what kind of frame did Watchly classify?”
+- **`currentSport`** is the **named sport** when the TV is showing sport content; it may be **`null`** when not applicable or unknown.
+- **`isCommercial`** is true during ad breaks; **`imageRoute`** may be **`commercial`** while **`currentSport`** still reflects what you might return to — **decide explicitly** whether your UI should hide, dim, or **hold the last** spotlight during commercials.
+
+## Security (non-negotiable)
+
+- **`NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS`**: comma-separated list of **parent** origins that may send messages. Compare **`event.origin`** to this allowlist **exactly** (serialized origins have **no** path; use **`http://ui`**, not **`http://ui/`**). If unset or empty, parsing defaults to **`http://ui`**. For **local development**, the parent is often **`http://localhost:3000`** (or your dev port) — include it alongside **`http://ui`** as in [`.env.example`](.env.example).
 - When embedded (`window.parent !== window`), require **`event.source === window.parent`** so only the direct parent can drive context.
 - **Do not** `console.warn` or run Zod on every `message` event: unrelated same-origin traffic (e.g. dev HMR) exists. **Gate on `event.data?.type === "watchly:context"`** before parsing; see [`lib/watchly-provider.tsx`](lib/watchly-provider.tsx).
 
 ## Dev-only tooling
 
-- **`/dev-kiosk`**: simulates the **parent** window (iframe + form + `postMessage`). Available only when `NODE_ENV === "development"` (otherwise `notFound()`).
-- Route list for the left sidebar is **generated** by `npm run generate:dev-kiosk-routes` → [`lib/dev-kiosk-routes.generated.ts`](lib/dev-kiosk-routes.generated.ts) (`predev` / `prebuild` run it when dev server first starts + file watcher re-runs it if routes are modified).
+- **`/dev-kiosk`**: simulates the **parent** window (iframe + controls + `postMessage`). Only when **`NODE_ENV === "development"`** (otherwise **`notFound()`**).
+- When the kiosk loads a route in its iframe, it adds the query **`i=frame`** (see **`DEV_KIOSK_IFRAME_QUERY_*`** in [`components/dev-kiosk.tsx`](components/dev-kiosk.tsx)). Routes can read **`useSearchParams()`** to adjust copy or layout when **`i=frame`** is present.
+- **Route sidebar:** generated by **`npm run generate:dev-kiosk-routes`** → [`lib/dev-kiosk-routes.generated.ts`](lib/dev-kiosk-routes.generated.ts). **`predev`** / **`prebuild`** run it; the dev watcher can re-run when routes change. **`/dev-kiosk`** itself is **excluded** from the generated list.
+
+### Checklist: add a new app route
+
+1. Add **`app/<segment>/page.tsx`** (and optional **`layout.tsx`**).
+2. Ensure **`npm run generate:dev-kiosk-routes`** has run so **`DEV_KIOSK_APP_ROUTES`** includes **`/<segment>`** (this runs via file watcher when `npm run dev` is running).
+3. Manually open **`/dev-kiosk`**, pick the route in the nav, and send **`watchly:context`** messages to verify behavior.
+
+## Monorepo: canonical app vs create-watchly-app template
+
+- **Canonical app:** repository root (`watchly-devkit/`).
+- **Scaffold template:** **`packages/create-watchly-app/template/`** (copied by **`create-watchly-app`**). Keep it aligned when you change core app behavior, **`lib/`**, **`components/`**, or **`AGENTS.md`**.
+- From repo root: **`node scripts/sync-create-watchly-template.mjs`** refreshes the template from the root app (see script header for scope). **`AGENTS.md`** in the template should match this file after a sync.
+- So workflow is: first update the canonical app so changes can be visualized and tested, then run `npm run sync:create-template` to update the template.
 
 ## Implementation constraints
 
-- **No imports** from `../frontend`, `../backend`, or other monorepo packages.
+- **No imports** from `../frontend`, `../backend`, or other monorepo packages outside this app/template.
 - Prefer extending **`WatchlyProvider`**, **`watchly-schema`**, and the postMessage envelope rather than ad hoc globals.
-- Keep README and `.env.example` aligned when changing env vars or the host contract.
+- Keep **`README.md`** and **`.env.example`** aligned when changing env vars or the host contract.
+- **Next.js:** this repo pins a **specific Next.js major/minor** — APIs and defaults may differ from older training cutoffs. Before unfamiliar changes, skim the version-specific guides under **`node_modules/next/dist/docs/`** and heed deprecation notices.
+
+### Build / App Router pitfalls
+
+- Hooks such as **`useSearchParams()`** can require a **`<Suspense>`** boundary (or equivalent) for static generation / **`next build`** on pages that use them. If **`next build`** fails with missing Suspense, wrap the client subtree or adjust the server/client split.
 
 <!-- BEGIN:nextjs-agent-rules -->
 
-# This is NOT the Next.js you know
-
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
+**Next.js note:** treat **`node_modules/next/dist/docs/`** as the source of truth for this installed version; don’t assume older App Router behavior.
 
 <!-- END:nextjs-agent-rules -->
