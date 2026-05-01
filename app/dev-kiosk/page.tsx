@@ -1,6 +1,15 @@
 import { DevKiosk } from '@/components/dev-kiosk';
 import { DEV_KIOSK_APP_ROUTES } from '@/lib/dev-kiosk-routes.generated';
 import { notFound } from 'next/navigation';
+import { Suspense } from 'react';
+
+function DevKioskFallback() {
+    return (
+        <div className="flex h-[100dvh] items-center justify-center bg-zinc-100 text-sm text-zinc-500 dark:bg-zinc-950 dark:text-zinc-400">
+            Loading Dev Kiosk…
+        </div>
+    );
+}
 
 /**
  * This page is only available in development mode (i.e. `npm run dev`)
@@ -16,5 +25,9 @@ export default function DevKioskPage() {
     if (process.env.NODE_ENV !== 'development') {
         notFound();
     }
-    return <DevKiosk routes={DEV_KIOSK_APP_ROUTES} />;
+    return (
+        <Suspense fallback={<DevKioskFallback />}>
+            <DevKiosk routes={DEV_KIOSK_APP_ROUTES} />
+        </Suspense>
+    );
 }

@@ -1,165 +1,128 @@
 #!/usr/bin/env node
-import fs from "node:fs/promises";
-import path from "node:path";
-import { fileURLToPath } from "node:url";
-import { spawn } from "node:child_process";
-import * as readline from "node:readline/promises";
-import { stdin as input, stdout as output } from "node:process";
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { spawn } from 'node:child_process';
+import * as readline from 'node:readline/promises';
+import { stdin as input, stdout as output } from 'node:process';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TEMPLATE_DIR = path.join(__dirname, "template");
+const DEFAULT_EXAMPLE = 'https://github.com/Common-Software-Co/watchly-devkit';
+
+/** Override for forks/tests: `WATCHLY_DEVKIT_EXAMPLE_URL=<url> node index.mjs …` */
+const EXAMPLE_URL = process.env.WATCHLY_DEVKIT_EXAMPLE_URL?.trim() || DEFAULT_EXAMPLE;
 
 function printHelp() {
-  console.log(`Usage:
+    console.log(`Usage:
   npx create-watchly-app@latest [directory] [options]
 
+Runs create-next-app using the Watchly devkit example, then copies
+.env.example → .env.local in the new project.
+
 Options:
-  --skip-install    Do not run npm install
+  Any flags supported by create-next-app (e.g. --typescript, --tailwind,
+  --eslint, --skip-install, --yes). Use create-next-app --help for the full list.
+
   --help, -h        Show this message
 
-Creates a new directory with the Watchly Next.js app template.
+Environment:
+  WATCHLY_DEVKIT_EXAMPLE_URL   Git archive URL passed to create-next-app --example
+                               (default: ${DEFAULT_EXAMPLE})
 `);
 }
 
-function toPackageName(dirName) {
-  const base = path.basename(dirName);
-  const slug = base
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^a-z0-9._-]/g, "");
-  if (!slug || slug === "." || slug === "..") {
-    throw new Error(`Invalid project directory: ${dirName}`);
-  }
-  if (!/^(@[a-z0-9-~][a-z0-9-._~]*\/)?[a-z0-9-._~]+$/.test(slug)) {
-    return slug.replace(/[^a-z0-9._@-]/g, "") || "watchly-app";
-  }
-  return slug;
-}
-
 async function pathExists(p) {
-  try {
-    await fs.access(p);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-async function copyTemplate(destRoot) {
-  await fs.cp(TEMPLATE_DIR, destRoot, {
-    recursive: true,
-    errorOnExist: false,
-  });
-}
-
-async function readJson(file) {
-  return JSON.parse(await fs.readFile(file, "utf8"));
-}
-
-async function writeJson(file, data) {
-  await fs.writeFile(file, `${JSON.stringify(data, null, 2)}\n`, "utf8");
-}
-
-async function applyPackageName(destRoot, name) {
-  const pkgPath = path.join(destRoot, "package.json");
-  const pkg = await readJson(pkgPath);
-  pkg.name = name;
-  await writeJson(pkgPath, pkg);
-
-  const lockPath = path.join(destRoot, "package-lock.json");
-  if (await pathExists(lockPath)) {
     try {
-      const lock = await readJson(lockPath);
-      if (lock && typeof lock === "object") lock.name = name;
-      await writeJson(lockPath, lock);
+        await fs.access(p);
+        return true;
     } catch {
-      // ignore malformed lockfile
+        return false;
     }
-  }
 }
 
-/** Copies .env.example to .env.local (cross-platform; same as cp). */
+/** Copies .env.example to .env.local (cross-platform; same idea as cp). */
 async function copyEnvExampleToLocal(destRoot) {
-  const example = path.join(destRoot, ".env.example");
-  const local = path.join(destRoot, ".env.local");
-  if (!(await pathExists(example))) return;
-  if (await pathExists(local)) return;
-  await fs.copyFile(example, local);
+    const example = path.join(destRoot, '.env.example');
+    const local = path.join(destRoot, '.env.local');
+    if (!(await pathExists(example))) {
+        console.warn(`Warning: no .env.example in ${destRoot}; skipped creating .env.local.`);
+        return;
+    }
+    if (await pathExists(local)) return;
+    await fs.copyFile(example, local);
+    console.log('\nCreated .env.local from .env.example (edit if parent origins differ).\n');
 }
 
-function runNpmInstall(cwd) {
-  return new Promise((resolve, reject) => {
-    const child = spawn("npm", ["install"], {
-      cwd,
-      stdio: "inherit",
-      shell: process.platform === "win32",
+function firstPositional(argv) {
+    return argv.find((a) => !a.startsWith('-'));
+}
+
+/**
+ * Removes --example and its value so we always use the Watchly devkit URL.
+ */
+function stripExampleFlag(argv) {
+    const out = [];
+    for (let i = 0; i < argv.length; i++) {
+        const a = argv[i];
+        if (a === '--example' || a.startsWith('--example=')) {
+            if (a.startsWith('--example=')) continue;
+            i++;
+            continue;
+        }
+        out.push(a);
+    }
+    return out;
+}
+
+function runCreateNextApp(cnaArgv) {
+    const args = ['create-next-app@latest', '--example', EXAMPLE_URL, ...cnaArgv];
+    return new Promise((resolve, reject) => {
+        const child = spawn('npx', args, {
+            stdio: 'inherit',
+            shell: process.platform === 'win32',
+        });
+        child.on('error', reject);
+        child.on('close', (code) => {
+            if (code === 0) resolve();
+            else reject(new Error(`create-next-app exited with code ${code}`));
+        });
     });
-    child.on("error", reject);
-    child.on("close", (code) => {
-      if (code === 0) resolve();
-      else reject(new Error(`npm install exited with code ${code}`));
-    });
-  });
 }
 
 async function main() {
-  const argv = process.argv.slice(2);
-  if (argv.includes("--help") || argv.includes("-h")) {
-    printHelp();
-    return;
-  }
-
-  const skipInstall = argv.includes("--skip-install");
-  const positional = argv.filter((a) => !a.startsWith("-"));
-
-  let targetDir = positional[0];
-  if (!targetDir) {
-    const rl = readline.createInterface({ input, output });
-    const answer = await rl.question(
-      "What is your project named? (e.g. my-watchly-app) ",
-    );
-    rl.close();
-    targetDir = answer.trim();
-  }
-
-  if (!targetDir) {
-    console.error("Error: project directory is required.");
-    process.exit(1);
-  }
-
-  const destRoot = path.resolve(process.cwd(), targetDir);
-  const pkgName = toPackageName(targetDir);
-
-  if (await pathExists(destRoot)) {
-    const entries = await fs.readdir(destRoot);
-    if (entries.length > 0) {
-      console.error(`Error: destination is not empty: ${destRoot}`);
-      process.exit(1);
+    let argv = process.argv.slice(2);
+    if (argv.includes('--help') || argv.includes('-h')) {
+        printHelp();
+        return;
     }
-  }
 
-  if (!(await pathExists(TEMPLATE_DIR))) {
-    console.error(
-      "Error: template directory is missing. If you are developing create-watchly-app locally, run:\n  node scripts/sync-create-watchly-template.mjs",
-    );
-    process.exit(1);
-  }
+    argv = stripExampleFlag(argv);
 
-  await copyTemplate(destRoot);
-  await applyPackageName(destRoot, pkgName);
-  await copyEnvExampleToLocal(destRoot);
+    if (!firstPositional(argv)) {
+        const rl = readline.createInterface({ input, output });
+        const answer = await rl.question('What is your project named? (e.g. my-watchly-app) ');
+        rl.close();
+        const name = answer.trim();
+        if (!name) {
+            console.error('Error: project directory is required.');
+            process.exit(1);
+        }
+        argv = [name, ...argv];
+    }
 
-  if (!skipInstall) {
-    console.log("\nInstalling dependencies with npm…\n");
-    await runNpmInstall(destRoot);
-  }
+    const projectDir = firstPositional(argv);
+    if (!projectDir) {
+        console.error('Error: could not determine project directory.');
+        process.exit(1);
+    }
 
-  console.log(`
+    await runCreateNextApp(argv);
+
+    const destRoot = path.resolve(process.cwd(), projectDir);
+    await copyEnvExampleToLocal(destRoot);
+
+    console.log(`
 Done. Next steps:
 
-  cd ${path.relative(process.cwd(), destRoot) || "."}
-  # .env.local was created from .env.example — edit if parent origins differ
+  cd ${path.relative(process.cwd(), destRoot) || '.'}
   npm run dev
 
 Open the printed local URL; use /dev-kiosk in development to simulate the parent iframe.
@@ -167,6 +130,6 @@ Open the printed local URL; use /dev-kiosk in development to simulate the parent
 }
 
 main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exit(1);
+    console.error(err instanceof Error ? err.message : err);
+    process.exit(1);
 });

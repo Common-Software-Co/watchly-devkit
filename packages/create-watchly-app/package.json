@@ -7,8 +7,7 @@
         "create-watchly-app": "./index.mjs"
     },
     "files": [
-        "index.mjs",
-        "template"
+        "index.mjs"
     ],
     "engines": {
         "node": ">=18"
@@ -16,12 +15,11 @@
     "keywords": [
         "watchly",
         "nextjs",
-        "create-app",
-        "iframe",
-        "postmessage"
+        "create-app"
     ],
     "license": "MIT",
     "scripts": {
-        "prepublishOnly": "node ../../scripts/sync-create-watchly-template.mjs"
+        "start": "node ./index.mjs",
+        "help": "node ./index.mjs --help"
     }
 }

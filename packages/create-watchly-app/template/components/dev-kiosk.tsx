@@ -1,8 +1,34 @@
 'use client';
 
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useCallback, useRef, useState } from 'react';
 import type { DevKioskAppRoute } from '@/lib/dev-kiosk-routes.generated';
 import type { WatchlyContext } from '@/lib/watchly-schema';
+
+/** Query marker: Dev Kiosk adds this to iframe URLs so nested /dev-kiosk can detect the embed preview. */
+export const DEV_KIOSK_IFRAME_QUERY_KEY = 'i';
+export const DEV_KIOSK_IFRAME_QUERY_VALUE = 'frame';
+
+/** Appends `?i=frame` (merging with existing search) for URLs loaded inside the Dev Kiosk preview iframe. */
+export function appendDevKioskIframeEmbedParam(pathOrHref: string): string {
+    const raw = pathOrHref.trim() || '/';
+    const prefixed = raw.startsWith('/') ? raw : `/${raw}`;
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const u = new URL(prefixed, base);
+    u.searchParams.set(DEV_KIOSK_IFRAME_QUERY_KEY, DEV_KIOSK_IFRAME_QUERY_VALUE);
+    return `${u.pathname}${u.search}${u.hash}`;
+}
+
+function stripDevKioskIframeEmbedParam(pathOrHref: string): string {
+    const raw = pathOrHref.trim() || '/';
+    const prefixed = raw.startsWith('/') ? raw : `/${raw}`;
+    const base = typeof window !== 'undefined' ? window.location.origin : 'http://localhost';
+    const u = new URL(prefixed, base);
+    u.searchParams.delete(DEV_KIOSK_IFRAME_QUERY_KEY);
+    const q = u.searchParams.toString();
+    return `${u.pathname}${q ? `?${q}` : ''}${u.hash}`;
+}
 
 function pickDefaultIframePath(routes: readonly string[]): string {
     if (routes.includes('/example')) {
@@ -20,11 +46,37 @@ function parseParticipants(text: string): string[] | null {
     if (!t) return null;
     return t
         .split(',')
-        .map(s => s.trim())
+        .map((s) => s.trim())
         .filter(Boolean);
 }
 
+function DevKioskNestedSimulatorMessage() {
+    return (
+        <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-zinc-100 px-6 text-center text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
+            <h1 className="text-sm font-semibold tracking-tight">Dev Kiosk</h1>
+            <p className="max-w-md text-sm text-zinc-600 dark:text-zinc-400">
+                Technically, you can load another dev-kiosk inside this existing dev-kiosk... but we found it to be too
+                dev-kiosk-y.
+            </p>
+            <p className="max-w-md text-sm text-zinc-600 dark:text-zinc-400">
+                👈 Try one of your routes in the left nav instead.
+            </p>
+            <Link
+                href="/?i=frame"
+                className="text-sm font-medium text-emerald-700 underline underline-offset-4 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-emerald-300"
+            >
+                Or go back
+            </Link>
+        </div>
+    );
+}
+
 export function DevKiosk({ routes }: DevKioskProps) {
+    const searchParams = useSearchParams();
+    // The dev-kiosk appends a query string param to URLs that it loads inside the iframe: ?i=frame
+    // We use this to determine if the dev-kiosk is trying to load itself inside its own iframe.
+    const isInsideDevKioskIframe = searchParams.get(DEV_KIOSK_IFRAME_QUERY_KEY) === DEV_KIOSK_IFRAME_QUERY_VALUE;
+
     const iframeRef = useRef<HTMLIFrameElement>(null);
     const [iframeReady, setIframeReady] = useState(false);
 
@@ -42,6 +94,8 @@ export function DevKiosk({ routes }: DevKioskProps) {
     const [isCommercial, setIsCommercial] = useState(false);
     const [currentSport, setCurrentSport] = useState('');
     const [participantsText, setParticipantsText] = useState('');
+
+    const iframeSrc = appendDevKioskIframeEmbedParam(iframePath);
 
     const sendToIframe = useCallback(() => {
         const win = iframeRef.current?.contentWindow;
@@ -68,15 +122,20 @@ export function DevKiosk({ routes }: DevKioskProps) {
         };
 
         win.postMessage(message, targetOrigin);
-        setNextFrameSequence(n => n + 1);
+        setNextFrameSequence((n) => n + 1);
     }, [nextFrameSequence, isSport, nonSportFrameCount, imageRoute, isCommercial, currentSport, participantsText]);
 
     const applyManualPath = useCallback(() => {
         const p = manualPath.trim() || '/';
         const normalized = p.startsWith('/') ? p : `/${p}`;
         setIframeReady(false);
-        setIframePath(normalized);
+        setIframePath(stripDevKioskIframeEmbedParam(normalized));
     }, [manualPath]);
+
+    // Prevent loading the dev-kiosk inside itself.
+    if (isInsideDevKioskIframe) {
+        return <DevKioskNestedSimulatorMessage />;
+    }
 
     return (
         <div className="flex h-[100dvh] min-h-0 flex-col bg-zinc-100 text-zinc-900 dark:bg-zinc-950 dark:text-zinc-100">
@@ -100,7 +159,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                 >
                     <button
                         type="button"
-                        onClick={() => setLeftCollapsed(c => !c)}
+                        onClick={() => setLeftCollapsed((c) => !c)}
                         className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-2 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
                         aria-expanded={!leftCollapsed}
                     >
@@ -110,7 +169,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                     {!leftCollapsed && (
                         <nav className="min-h-0 flex-1 overflow-y-auto p-2">
                             <ul className="space-y-1">
-                                {routes.map(route => (
+                                {routes.map((route) => (
                                     <li key={route}>
                                         <button
                                             type="button"
@@ -141,7 +200,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                             <span className="shrink-0 text-zinc-500">Manual path</span>
                             <input
                                 value={manualPath}
-                                onChange={e => setManualPath(e.target.value)}
+                                onChange={(e) => setManualPath(e.target.value)}
                                 className="min-w-0 flex-1 rounded border border-zinc-300 bg-white px-2 py-1 font-mono text-xs dark:border-zinc-700 dark:bg-zinc-950"
                                 placeholder="/example"
                             />
@@ -167,7 +226,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     ref={iframeRef}
                                     title="Watchly Devkit embed"
                                     className="absolute inset-0 block size-full border-0 bg-zinc-950 dark:bg-black"
-                                    src={iframePath}
+                                    src={iframeSrc}
                                     onLoad={() => setIframeReady(true)}
                                 />
                             </div>
@@ -183,7 +242,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                 >
                     <button
                         type="button"
-                        onClick={() => setRightCollapsed(c => !c)}
+                        onClick={() => setRightCollapsed((c) => !c)}
                         className="flex shrink-0 items-center justify-between border-b border-zinc-200 px-2 py-2 text-left text-xs font-medium uppercase tracking-wide text-zinc-600 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-800"
                         aria-expanded={!rightCollapsed}
                     >
@@ -202,7 +261,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     <input
                                         type="checkbox"
                                         checked={isSport}
-                                        onChange={e => setIsSport(e.target.checked)}
+                                        onChange={(e) => setIsSport(e.target.checked)}
                                     />
                                     isSport
                                 </label>
@@ -211,7 +270,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     <input
                                         type="number"
                                         value={nonSportFrameCount}
-                                        onChange={e => setNonSportFrameCount(Number(e.target.value) || 0)}
+                                        onChange={(e) => setNonSportFrameCount(Number(e.target.value) || 0)}
                                         className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
                                     />
                                 </label>
@@ -219,7 +278,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     <span className="text-zinc-500">imageRoute</span>
                                     <input
                                         value={imageRoute}
-                                        onChange={e => setImageRoute(e.target.value)}
+                                        onChange={(e) => setImageRoute(e.target.value)}
                                         className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
                                     />
                                 </label>
@@ -227,7 +286,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     <input
                                         type="checkbox"
                                         checked={isCommercial}
-                                        onChange={e => setIsCommercial(e.target.checked)}
+                                        onChange={(e) => setIsCommercial(e.target.checked)}
                                     />
                                     isCommercial
                                 </label>
@@ -235,8 +294,8 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     <span className="text-zinc-500">currentSport (empty → null)</span>
                                     <input
                                         value={currentSport}
-                                        onChange={e => setCurrentSport(e.target.value)}
-                                        className="rounded border border-zinc-300 bg-white px-2 py-1 dark:border-zinc-700 dark:bg-zinc-950"
+                                        onChange={(e) => setCurrentSport(e.target.value)}
+                                        className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
                                     />
                                 </label>
                                 <label className="flex flex-col gap-1">
@@ -245,7 +304,7 @@ export function DevKiosk({ routes }: DevKioskProps) {
                                     </span>
                                     <textarea
                                         value={participantsText}
-                                        onChange={e => setParticipantsText(e.target.value)}
+                                        onChange={(e) => setParticipantsText(e.target.value)}
                                         rows={3}
                                         className="rounded border border-zinc-300 bg-white px-2 py-1 font-mono dark:border-zinc-700 dark:bg-zinc-950"
                                     />
