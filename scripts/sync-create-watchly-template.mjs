@@ -78,8 +78,34 @@ function normalizeTemplatePackageJson(text) {
   delete pkg.private;
   if (pkg.scripts && typeof pkg.scripts === "object") {
     delete pkg.scripts["sync:create-template"];
+    delete pkg.scripts["create-watchly-app"];
   }
   return `${JSON.stringify(pkg, null, 2)}\n`;
+}
+
+const README_MONOREPO_ONLY_BEGIN = "<!-- BEGIN:watchly-monorepo-contributors -->";
+const README_MONOREPO_ONLY_END = "<!-- END:watchly-monorepo-contributors -->";
+
+/** Scaffold README matches the repo README minus monorepo-only contributor sections (see markers in ../README.md). */
+async function patchTemplateReadme() {
+  const readmePath = path.join(TEMPLATE_ROOT, "README.md");
+  let text;
+  try {
+    text = await fs.readFile(readmePath, "utf8");
+  } catch {
+    return;
+  }
+  const start = text.indexOf(README_MONOREPO_ONLY_BEGIN);
+  const end = text.indexOf(README_MONOREPO_ONLY_END);
+  if (start === -1 || end === -1 || end <= start) {
+    console.warn(
+      "patchTemplateReadme: marker pair missing or invalid in README.md; scaffold README left unchanged.",
+    );
+    return;
+  }
+  const afterEnd = end + README_MONOREPO_ONLY_END.length;
+  const next = `${text.slice(0, start).trimEnd()}\n${text.slice(afterEnd).replace(/^\s+/, "")}`;
+  await fs.writeFile(readmePath, next.endsWith("\n") ? next : `${next}\n`, "utf8");
 }
 
 async function patchTemplatePackageFiles() {
@@ -108,6 +134,7 @@ async function main() {
   await rmrf(TEMPLATE_ROOT);
   await fs.mkdir(TEMPLATE_ROOT, { recursive: true });
   await copyTree(REPO_ROOT, TEMPLATE_ROOT, "");
+  await patchTemplateReadme();
   await patchTemplatePackageFiles();
   console.log(`Template synced to ${path.relative(REPO_ROOT, TEMPLATE_ROOT)}`);
 }

@@ -7,8 +7,7 @@
     "prebuild": "npm run generate:dev-kiosk-routes",
     "start": "next start",
     "lint": "eslint",
-    "generate:dev-kiosk-routes": "node scripts/generate-dev-kiosk-routes.mjs",
-    "create-watchly-app": "node packages/create-watchly-app/index.mjs"
+    "generate:dev-kiosk-routes": "node scripts/generate-dev-kiosk-routes.mjs"
   },
   "dependencies": {
     "next": "16.2.3",

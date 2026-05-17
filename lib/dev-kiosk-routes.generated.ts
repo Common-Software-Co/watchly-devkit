@@ -3,9 +3,8 @@
 export const DEV_KIOSK_APP_ROUTES = [
   "/",
   "/dev-datafetching",
-  "/dev-three-panel",
-  "/message-debug",
-  "/solid-bg-test",
+  "/dev-message-debugger",
+  "/dev-three-panel-layout",
 ] as const;
 
 export type DevKioskAppRoute = (typeof DEV_KIOSK_APP_ROUTES)[number];

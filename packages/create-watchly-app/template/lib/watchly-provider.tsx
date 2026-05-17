@@ -1,95 +1,74 @@
-"use client";
+'use client';
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type ReactNode,
-} from "react";
-import { parseAllowedParentOrigins } from "./allowed-parent-origins";
-import { watchlyContextMessageSchema } from "./watchly-post-message";
-import {
-  defaultWatchlyContext,
-  type WatchlyContext,
-} from "./watchly-schema";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { parseAllowedParentOrigins } from './allowed-parent-origins';
+import { watchlyContextMessageSchema } from './watchly-post-message';
+import { defaultWatchlyContext, type WatchlyContext } from './watchly-schema';
 
-const WatchlyContextReact = createContext<WatchlyContext | undefined>(
-  undefined,
-);
+const WatchlyContextReact = createContext<WatchlyContext | undefined>(undefined);
 
 /** Ignore dev tooling and other same-origin postMessage traffic (HMR, etc.). */
-function isWatchlyContextEnvelope(
-  data: unknown,
-): data is { type: "watchly:context"; payload: unknown } {
-  return (
-    typeof data === "object" &&
-    data !== null &&
-    "type" in data &&
-    (data as { type: unknown }).type === "watchly:context"
-  );
+function isWatchlyContextEnvelope(data: unknown): data is { type: 'watchly:context'; payload: unknown } {
+    return (
+        typeof data === 'object' &&
+        data !== null &&
+        'type' in data &&
+        (data as { type: unknown }).type === 'watchly:context'
+    );
 }
 
 export function WatchlyProvider({ children }: { children: ReactNode }) {
-  const [context, setContext] = useState<WatchlyContext>(defaultWatchlyContext);
+    const [context, setContext] = useState<WatchlyContext>(defaultWatchlyContext);
 
-  const allowedOrigins = useMemo(() => {
-    return new Set(
-      parseAllowedParentOrigins(
-        process.env.NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS,
-      ),
+    const allowedOrigins = useMemo(() => {
+        return new Set(parseAllowedParentOrigins(process.env.NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS));
+    }, []);
+
+    const onMessage = useCallback(
+        (event: MessageEvent) => {
+            console.debug('Message received', event);
+
+            if (!allowedOrigins.has(event.origin)) {
+                console.debug('Message did not come from an allowed origin', event.origin);
+                return;
+            }
+
+            const inIframe = typeof window !== 'undefined' && window.parent !== window;
+            if (inIframe && event.source !== window.parent) {
+                console.debug('Message did not come from the parent iframe', event.source);
+                return;
+            }
+
+            if (!isWatchlyContextEnvelope(event.data)) {
+                console.debug('Message is not shaped like a Watchly event', event.data);
+                return;
+            }
+
+            const parsed = watchlyContextMessageSchema.safeParse(event.data);
+            if (!parsed.success) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn('[watchlyDevkit] Ignoring invalid watchly:context payload', parsed.error.flatten());
+                }
+                return;
+            }
+
+            setContext(parsed.data.payload);
+        },
+        [allowedOrigins],
     );
-  }, []);
 
-  const onMessage = useCallback(
-    (event: MessageEvent) => {
-      if (!allowedOrigins.has(event.origin)) {
-        return;
-      }
+    useEffect(() => {
+        window.addEventListener('message', onMessage);
+        return () => window.removeEventListener('message', onMessage);
+    }, [onMessage]);
 
-      const inIframe = typeof window !== "undefined" && window.parent !== window;
-      if (inIframe && event.source !== window.parent) {
-        return;
-      }
-
-      if (!isWatchlyContextEnvelope(event.data)) {
-        return;
-      }
-
-      const parsed = watchlyContextMessageSchema.safeParse(event.data);
-      if (!parsed.success) {
-        if (process.env.NODE_ENV === "development") {
-          console.warn(
-            "[watchlyDevkit] Ignoring invalid watchly:context payload",
-            parsed.error.flatten(),
-          );
-        }
-        return;
-      }
-
-      setContext(parsed.data.payload);
-    },
-    [allowedOrigins],
-  );
-
-  useEffect(() => {
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [onMessage]);
-
-  return (
-    <WatchlyContextReact.Provider value={context}>
-      {children}
-    </WatchlyContextReact.Provider>
-  );
+    return <WatchlyContextReact.Provider value={context}>{children}</WatchlyContextReact.Provider>;
 }
 
 export function useWatchlyContext(): WatchlyContext {
-  const value = useContext(WatchlyContextReact);
-  if (value === undefined) {
-    throw new Error("useWatchlyContext must be used within a WatchlyProvider");
-  }
-  return value;
+    const value = useContext(WatchlyContextReact);
+    if (value === undefined) {
+        throw new Error('useWatchlyContext must be used within a WatchlyProvider');
+    }
+    return value;
 }
