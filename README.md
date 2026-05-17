@@ -2,9 +2,13 @@
 
 # Watchly Devkit (`watchly-devkit`)
 
-New here? Here’s the mental model in one breath: **Watchly hardware sits next to a TV**, watches what’s on screen, and turns that into structured signals—sport vs. not, coarse scene type, ads, sometimes teams or participants. **Your job is the companion UI**: the thing patrons actually tap or glance at on the kiosk.
+Build your own content-aware, screen-side app for the Watchly.ai platform in 10 minutes with the devkit.
 
-This repository is a **Next.js (App Router)** kit for that companion app. In production it runs **inside an iframe** on the kiosk device; the surrounding **parent page** owns the TV pipeline and talks to your bundle over **`window.postMessage()`**. You don’t poll or scrape the iframe URL—messages arrive, get validated, and land in React as **`WatchlyContext`**.
+Learn more about the Watchly hardware at https://watchly.ai
+
+> [**Watchly**](https://watchly.ai) uses an edge AI hardware device to monitor the content on a TV and feed metadata to your sidescreen app, which is typically shown on a second screen that's mounted alongside the main screen. The sidescreen app that you're building with this dev kit can use that data to choose what to display and how to act based on knowledge of what's on the adjacent "main screen".
+
+This repository is a **Next.js (App Router)** kit for that companion app. In production, it runs **inside an iframe** on the kiosk device; the surrounding **parent page** owns the TV pipeline and talks to your bundle over **`window.postMessage()`**. You don’t poll for data - messages are exposed to your app through the React Context API as **`WatchlyContext`**.
 
 Hardware and product story: https://watchly.ai
 
@@ -149,7 +153,7 @@ Defense in depth stays boring on purpose:
 
 ## Contributing
 
-Contributing to **this** repository (not a generated app)? Clone it, copy env from **`.env.example`**, and run **`npm run dev`** like any other Next.js checkout:
+Contributing to **this** repository (not a generated app)? Clone it, copy env from **`.env.example`**, and run **`npm run dev`** like any other Next.js app:
 
 ### Setup
 
@@ -164,10 +168,15 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) (or the port shown in the terminal).
 
+Before committing changes or opening a pull request, run `npm run sync:create-template`
+to copy the entire app into the `packages/create-watchly-app/template` folder.
+This is the app that will be scaffolded when you run `npx create-watchly-app`.
+
 ### Publishing
 
-From `packages/create-watchly-app`, run `npm publish` (see that package’s README for what the published tarball contains).
+Maintainers: after changing app files, make sure to run `npm run sync:create-template` to
+update the `create-watchly-app` template files.
 
-Maintainers: after changing app files, run `npm run sync:create-template` so the committed template stays in sync before you ship a new CLI version.
+From `packages/create-watchly-app`, run `npm publish` (see that package’s README for what the published tarball contains).
 
 <!-- END:watchly-monorepo-contributors -->
