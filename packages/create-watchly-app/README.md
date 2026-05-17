@@ -41,25 +41,3 @@ Open the app in your browser -- **`/dev-kiosk`** is your playground: it emulates
 
 Developer documentation lives in the **[devkit README](https://github.com/Common-Software-Co/watchly-devkit/blob/main/README.md)**
 and **`lib/watchly-schema.ts`** inside the generated project.
-
-## Monorepo / publishing (maintainers)
-
-If you maintain **`watchly-devkit`**, remember each npm release bundles the **`template/`** folder exactly as it sits beside **`index.mjs`**—release hygiene matters.
-
-Ship checklist:
-
-1. From the repo root, refresh **`template/`**:
-
-```bash
-npm run sync:create-template
-```
-
-2. Bump **`packages/create-watchly-app/package.json`**.
-
-3. Publish from **`packages/create-watchly-app`**:
-
-```bash
-npm publish
-```
-
-Anyone pinning **`create-watchly-app@x.y.z`** forever receives that bundled template; fixes reach **new** projects through releases. Existing repos upgrade manually—or cherry-pick files—unless they re-run scaffolding.

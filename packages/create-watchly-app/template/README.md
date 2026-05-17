@@ -72,9 +72,20 @@ iframe.contentWindow.postMessage(
 
 On your side, the devkit listens on **`window`**, filters noise, validates the envelope, and feeds **`WatchlyProvider`**—components call **`useWatchlyContext()`** like any other React context.
 
+## Parent origins (`NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS`)
+
+Browsers tell you **`event.origin`** for every **`postMessage`**; your iframe child should **only** trust parents you expect. **`NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS`** is that allowlist as comma-separated **serialized origins** (scheme + host + port):
+
+- Examples: `http://ui`, `http://localhost:3000`.
+- **When unset or empty**, we default to **`http://ui`**—the usual production kiosk parent hostname.
+- Origins **never** include a path segment; compare **`http://ui`**, not **`http://ui/`**.
+- Non-default ports belong in the origin too, e.g. **`http://ui:8080`**.
+
+When **you** call **`postMessage`** from the parent, match **`targetOrigin`** to your iframe’s actual origin (scheme + host + port). Avoid **`'*'`** outside quick hacks—the parent’s origin still has to appear on the child’s allowlist or we drop the message.
+
 ## Building new content
 
-This project is configured to use Next.js App Router conventions:
+You’re on plain Next.js App Router conventions:
 
 1. Add a folder under **`app/`**—that folder name becomes the URL segment (`app/scores` → **`/scores`**).
 2. Drop in **`page.tsx`** with a default export (your React tree for that route).
@@ -108,10 +119,14 @@ type WatchlyContext = {
         isSport: boolean;
         /** Frames since sport was last detected. */
         nonSportFrameCount: number;
-        /** Coarse visual category for the current frame. */
+        /** Coarse visual category for the current frame (i.e. 'football', 'commercial', 'talkshow', etc). */
         imageRoute: WatchlyImageRoute;
+        /** Whether or not a TV commercial is currently showing on the main screen. */
         isCommercial: boolean;
-        /** Sport name when applicable; `null` when not sport or unknown. */
+        /**
+         * Sport name when applicable (i.e. "football", "baseball", etc); `null` when not sport or unknown.
+         * NOTE: if the currentSport is non-null, it will retain its vlue
+         */
         currentSport: string | null;
         /** Participant names (e.g. teams) when identified; otherwise `null`. */
         currentEventParticipants: string[] | null;
@@ -129,15 +144,7 @@ Malformed payloads never mutate context; **`npm run dev`** logs enough breadcrum
 
 ## Security behavior (iframe child)
 
+Defense in depth stays boring on purpose:
+
 1. **`event.origin`** must match **`NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS`** (exact serialized origin strings).
 2. If we’re embedded (**`window.parent !== window`**), **`event.source`** must be **`window.parent`** so random nested frames can’t impersonate the kiosk chrome.
-
-### Parent origins (`NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS`)
-
-Browsers will include **`event.origin`** along with every **`postMessage`**. Your iframe child should **only** trust message from parents you expect.
-**`NEXT_PUBLIC_ALLOWED_PARENT_ORIGINS`** (in the `.env` file) is that allowlist as comma-separated **serialized origins** (scheme + host + port):
-
-- Examples: `http://ui`, `http://localhost:3000`.
-- **When unset or empty**, we default to **`http://ui`**—the usual production kiosk parent hostname.
-- Origins **never** include a path segment; compare **`http://ui`**, not **`http://ui/`**.
-- Non-default ports belong in the origin too, e.g. **`http://ui:8080`**.

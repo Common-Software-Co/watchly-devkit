@@ -4,8 +4,10 @@ import { useWatchlySWR } from '@/lib/watchly-swr';
 import { useWatchlyContext } from '@/lib/watchly-provider';
 
 /**
- * https://httpbin.org/get echoes the request; `args` reflects query params, so different
- * `sport` values produce visibly different JSON (good for demos without API keys).
+ * https://httpbin.org/get is a public API that echoes whatever request is sent to it
+ * We're using it in this example to demonstrate how to build a component that makes an outbound API call
+ * whenever the `currentSport` value changes in the `WatchlyContext`.
+ *
  */
 type HttpBinGetResponse = {
     /** Query string parameters echoed back (values are strings). */
@@ -41,10 +43,21 @@ export default function DevDataFetchingPage() {
         <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 px-6 py-10">
             <header>
                 <h1 className="text-2xl font-semibold tracking-tight">Watchly Devkit / dev data fetching</h1>
-                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                    Example of <code className="font-mono text-xs">useWatchlySWR</code>: request a public endpoint with{' '}
-                    <code className="font-mono text-xs">currentSport</code> as a query param, and poll every{' '}
-                    {POLL_MS / 1000}s.
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 py-4">
+                    This example shows how to build a component that makes an outbound API call whenever the
+                    `currentSport` value changes in the `WatchlyContext`. This is a common pattern for sidescreen apps
+                    that rely on live data for a specific sport or team.
+                </p>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 py-4">
+                    Test it out by typing "basketball" into the <code className="font-mono text-xs">currentSport</code>{' '}
+                    field in the message sidebar (the right side of the dev kiosk window). This simulates the Watchly
+                    hardware sending a message to this sidescreen app, telling it that "basketball" is currently being
+                    shown on the main screen.
+                </p>
+                <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400 py-4">
+                    This app will then send an outbound API request to https://httpbin.org (a public API that simply
+                    echoes the request back to you) and will display an emoji that represents the sport in the API
+                    response.
                 </p>
             </header>
 
@@ -53,7 +66,8 @@ export default function DevDataFetchingPage() {
                 <p className="mt-2 font-mono text-sm text-zinc-800 dark:text-zinc-200">
                     {context.frame.currentSport ?? (
                         <span className="text-zinc-500">
-                            null — set &quot;currentSport&quot; in dev kiosk to enable fetching
+                            null — (send a message with a &quot;currentSport&quot; field from the message sidebar in dev
+                            kiosk)
                         </span>
                     )}
                 </p>
