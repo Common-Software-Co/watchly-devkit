@@ -32,7 +32,9 @@ export default function DevDataFetchingPage() {
             if (!res.ok) {
                 throw new Error(`HTTP ${res.status}`);
             }
-            return res.json() as Promise<HttpBinGetResponse>;
+            const json = (await res.json()) as HttpBinGetResponse;
+            console.log('API response', json);
+            return json;
         },
         swr: {
             refreshInterval: POLL_MS,
