@@ -26,21 +26,17 @@ export function WatchlyProvider({ children }: { children: ReactNode }) {
 
     const onMessage = useCallback(
         (event: MessageEvent) => {
-            console.debug('Message received', event);
+            /** Same-origin dev traffic (Next/Turbopack HMR) can attach huge payloads; gate before heavier work per AGENTS.md. */
+            if (!isWatchlyContextEnvelope(event.data)) {
+                return;
+            }
 
             if (!allowedOrigins.has(event.origin)) {
-                console.debug('Message did not come from an allowed origin', event.origin);
                 return;
             }
 
             const inIframe = typeof window !== 'undefined' && window.parent !== window;
             if (inIframe && event.source !== window.parent) {
-                console.debug('Message did not come from the parent iframe', event.source);
-                return;
-            }
-
-            if (!isWatchlyContextEnvelope(event.data)) {
-                console.debug('Message is not shaped like a Watchly event', event.data);
                 return;
             }
 
