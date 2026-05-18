@@ -40,6 +40,7 @@ function SectionTitle({ id, children }: { id: string; children: ReactNode }) {
  */
 export function DevKioskSchemaReference() {
     const imageRoutes = watchlyFrameSchema.shape.imageRoute.options;
+    const currentSports = ['football', 'basketball', 'baseball', 'tennis', 'hockey', 'golf', 'boxing', 'unknown'];
 
     return (
         <div className="space-y-4 text-zinc-900 dark:text-zinc-100">
@@ -128,11 +129,24 @@ export function DevKioskSchemaReference() {
                         ))}
                     </ul>
                     <FieldBlock name="isCommercial" typeLine="boolean">
-                        Whether a commercial break is on screen now.
+                        Whether a commercial break is on screen now. This is a convenience field that is true when
+                        `imageRoute` is `"commercial"`
                     </FieldBlock>
                     <FieldBlock name="currentSport" typeLine="string | null">
                         Sport name when applicable; <TypeTag>null</TypeTag> when not showing sport.
+                        <br />
+                        NOTE: if the currentSport is non-null, it will retain its value during commercial breaks (when
+                        isCommercial=true)
                     </FieldBlock>
+                    <ul className="flex flex-wrap gap-1" aria-label="imageRoute enum values">
+                        {currentSports.map((currentSport) => (
+                            <li key={currentSport}>
+                                <span className="inline-flex rounded-full border border-zinc-200 bg-white px-2 py-0.5 font-mono text-[10px] text-zinc-800 shadow-sm dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200">
+                                    {currentSport}
+                                </span>
+                            </li>
+                        ))}
+                    </ul>
                     <FieldBlock name="currentEventParticipants" typeLine="string[] | null">
                         Participant names when identified, e.g. team names. <TypeTag>null</TypeTag> when not sport or
                         unknown.
